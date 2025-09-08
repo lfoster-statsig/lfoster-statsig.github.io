@@ -16,8 +16,8 @@ function App() {
   useEffect(() => {
     async function setup() {
       try {
-        await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
-        await faceapi.nets.faceLandmark68Net.loadFromUri("/models");
+        await faceapi.nets.tinyFaceDetector.loadFromUri("./models")
+        await faceapi.nets.faceLandmark68Net.loadFromUri("./models")
 
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         if (videoRef.current) {
