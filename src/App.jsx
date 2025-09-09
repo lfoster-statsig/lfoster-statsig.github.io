@@ -158,6 +158,46 @@ function App() {
         }
       });
 
+      // Handle collisions between all pairs
+      for (let i = 0; i < headsRef.current.length; i++) {
+        for (let j = i + 1; j < headsRef.current.length; j++) {
+          const h1 = headsRef.current[i];
+          const h2 = headsRef.current[j];
+
+          const dx = (h2.x + h2.size/2) - (h1.x + h1.size/2);
+          const dy = (h2.y + h2.size/2) - (h1.y + h1.size/2);
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          const minDist = h1.size/2 + h2.size/2;
+
+          if (dist < minDist) {
+            // normalize vector
+            const nx = dx / dist;
+            const ny = dy / dist;
+
+            // relative velocity
+            const dvx = h1.dx - h2.dx;
+            const dvy = h1.dy - h2.dy;
+
+            // impact speed along normal
+            const impact = dvx * nx + dvy * ny;
+            if (impact > 0) continue; // already separating
+
+            // bounce velocities (equal mass elastic collision)
+            h1.dx -= impact * nx;
+            h1.dy -= impact * ny;
+            h2.dx += impact * nx;
+            h2.dy += impact * ny;
+
+            // push them apart
+            const overlap = minDist - dist;
+            h1.x -= (overlap/2) * nx;
+            h1.y -= (overlap/2) * ny;
+            h2.x += (overlap/2) * nx;
+            h2.y += (overlap/2) * ny;
+          }
+        }
+      }
+
       requestAnimationFrame(animate);
     }
 
