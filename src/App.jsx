@@ -124,26 +124,43 @@ function App() {
     const ctx = canvas.getContext("2d");
 
     function animate() {
+      const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       headsRef.current.forEach((head) => {
-        const { img, size } = head;
+        const { x, y, dx, dy, size } = head;
+        const img = head.img;
 
-        if (img.complete) {
-          ctx.drawImage(img, head.x, head.y, size, size);
+        if (img) {
+          // Update rotation angle
+          const speed = Math.sqrt(dx * dx + dy * dy);
+          const direction = dx >= 0 ? 1 : -1; // clockwise if moving right
+          head.angle = (head.angle || 0) + direction * (speed * 0.001);
+
+          // Draw with rotation
+          ctx.save();
+          ctx.translate(x + size / 2, y + size / 2); // move origin to head center
+          ctx.rotate(head.angle);
+          ctx.drawImage(img, -size / 2, -size / 2, size, size);
+          ctx.restore();
         }
 
-        // Move
+        // Update position
         head.x += head.dx;
-        head.y += head.dy;
+        head.y += head.dy
 
-        // Bounce
-        if (head.x <= 0 || head.x + size >= canvas.width) head.dx *= -1;
-        if (head.y <= 0 || head.y + size >= canvas.height) head.dy *= -1;
+        // Bounce on edges
+        if (head.x <= 0 || head.x + size >= canvas.width) {
+          head.dx *= -1;
+        }
+        if (head.y <= 0 || head.y + size >= canvas.height) {
+          head.dy *= -1;
+        }
       });
 
       requestAnimationFrame(animate);
     }
+
 
     animate();
   }, []);
@@ -169,8 +186,8 @@ function spawnHead(src, startX, startY) {
     img,
     x: startX ?? Math.random() * (window.innerWidth - 120),
     y: startY ?? Math.random() * (window.innerHeight - 120),
-    dx: (Math.random() < 0.5 ? -1 : 1) * (1 + Math.random() * 2),
-    dy: (Math.random() < 0.5 ? -1 : 1) * (1 + Math.random() * 2),
+    dx: (Math.random() < 0.5 ? -1 : 1) * (1 + Math.random()),
+    dy: (Math.random() < 0.5 ? -1 : 1) * (1 + Math.random()),
     size: 120,
   };
 }
