@@ -1,4 +1,4 @@
 # bounce
 Bounce!
 
-https://logoas.xyz/bounce
+https://lfoster-statsig.github.io/
