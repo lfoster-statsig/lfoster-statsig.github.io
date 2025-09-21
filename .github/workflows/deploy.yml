@@ -32,13 +32,13 @@ jobs:
           echo "Repo root listing:"
           ls -la
           echo
-          if [ -d ./build ]; then
+          if [ -d ./dist ]; then
             echo ">>> build directory exists — listing first 200 files"
-            find ./build -type f | sed -n '1,200p'
+            find ./dist -type f | sed -n '1,200p'
             echo "Sizes:"
-            du -sh ./build || true
+            du -sh ./dist || true
           else
-            echo "ERROR: build directory not found at ./build"
+            echo "ERROR: build directory not found at ./dist"
             echo "Hint: if you use Vite, Next, or custom scripts the output dir might be 'dist' or 'out'."
             exit 1
           fi
