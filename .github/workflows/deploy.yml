@@ -42,12 +42,9 @@ jobs:
             echo "Hint: if you use Vite, Next, or custom scripts the output dir might be 'dist' or 'out'."
             exit 1
           fi
-
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: ./build
-          # keep_files: true   # uncomment if you want to *preserve* files already on gh-pages
-          allow_empty_commit: false
+          publish_dir: ./dist
