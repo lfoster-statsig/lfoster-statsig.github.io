@@ -78,13 +78,13 @@ function App() {
 
           ctx.beginPath();
           ctx.ellipse(
-            targetSize / 2,
-            targetSize / 2,
-            targetSize / 2,
-            targetSize / 2,
-            0,
-            0,
-            2 * Math.PI
+            targetSize / 2, // x
+            targetSize / 2, // y
+            targetSize / 2, // radiusX
+            targetSize / 2, // radiusY
+            0, // rotation
+            0, // startAngle
+            2 * Math.PI // endAngle
           );
           ctx.closePath();
           ctx.clip();
@@ -103,8 +103,20 @@ function App() {
 
           return canvas.toDataURL();
         });
-      } else {
-        newImages = [defaultSvg];
+      }
+
+      // only update if new faces found
+      if (newImages && newImages.length > 0) {
+        newImages.forEach((src, i) => {
+          if (headsRef.current[i]) {
+            headsRef.current[i].img.src = src;
+          } else {
+            headsRef.current[i] = spawnHead(src);
+          }
+        });
+
+        // If fewer detections than before → trim array
+        headsRef.current = headsRef.current.slice(0, newImages.length);
       }
 
       // Update headsRef: keep positions if already exist

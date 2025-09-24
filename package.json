@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "face-api.js": "^0.22.2",
+    "netlify": "^23.6.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
