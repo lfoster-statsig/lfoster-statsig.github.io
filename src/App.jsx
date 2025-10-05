@@ -2,16 +2,11 @@ import * as faceapi from "face-api.js";
 
 import { useEffect, useRef, useState } from "react";
 
-// Company logos as SVG data URIs
+// Company logos
 const statsigLogo =
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'><rect width='200' height='200' fill='%23194B7D' rx='20'/><path d='M60 140 L60 110 Q60 90 80 90 L120 90 Q140 90 140 70 Q140 50 120 50 L60 50' stroke='white' stroke-width='12' fill='none' stroke-linecap='round'/><path d='M60 150 L140 150' stroke='white' stroke-width='12' stroke-linecap='round'/></svg>";
+  "https://mintlify.s3.us-west-1.amazonaws.com/coframe/public/logos/statsig.png";
 
-const openaiLogo = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'>
-  <circle cx='100' cy='100' r='100' fill='white'/>
-  <g transform='translate(35,35) scale(0.65)'>
-    <path d='M197.917 136.749c6.324-16.76 6.489-35.291.467-52.18-6.023-16.888-18.034-31.056-33.93-40.038a83.533 83.533 0 0 1 4.886 41.197c-2.144 13.974-8.138 27.156-17.333 38.028-.854 1.012-1.741 2-2.663 2.957a39.314 39.314 0 0 0 17.544-7.229l.535.406c12.242 9.336 19.961 23.13 21.393 38.096 1.431 14.966-2.789 29.932-11.722 41.574-8.934 11.643-21.786 19.499-35.852 21.882-14.066 2.383-28.495.144-40.185-6.225 2.577-.532 5.119-1.235 7.612-2.105 16.878-5.985 30.967-18.13 39.064-33.655a81.054 81.054 0 0 0 8.096-39.606c-.059-1.681-.172-3.359-.339-5.029a39.44 39.44 0 0 0-1.329-19.204c-2.809-8.189-8.322-15.28-15.69-20.165-7.367-4.884-16.132-7.302-24.981-6.904-8.85.399-17.318 3.705-24.168 9.363-6.85 5.658-11.74 13.278-13.913 21.699 3.813-2 7.865-3.587 12.065-4.732a39.386 39.386 0 0 0-3.444 15.974c-.039 9.533 3.407 18.745 9.704 25.914s14.968 11.441 24.097 11.86c.215.01.429.019.644.025-.42.515-.845 1.027-1.278 1.532-11.389 13.344-27.566 21.756-45.095 23.404-17.53 1.648-35.146-3.523-49.101-14.397C9.64 151.311 1.349 133.786.236 115.015c-1.113-18.771 4.885-37.237 16.76-51.609L17 63.403C5.125 77.775-.873 96.242.24 115.013c1.113 18.771 9.404 36.297 23.16 48.959 13.755 12.662 31.37 17.833 49.1 14.397 17.53-1.648 33.707-10.06 45.095-23.404l1.278-1.532-.644-.025c-9.13-.419-17.8-4.691-24.097-11.86-6.297-7.17-9.743-16.381-9.704-25.914a39.374 39.374 0 0 1 3.444-15.974l-.373-.112a81.233 81.233 0 0 0-43.602 5.042c-17.218 7.37-31.027 21.421-38.102 38.775C-1.18 160.718-.19 179.242 6.928 196c7.117 16.76 19.856 30.46 35.889 38.608 16.033 8.149 34.455 10.14 51.724 5.595 17.269-4.545 32.186-15.257 41.917-30.095l.336-.517.336.517c9.731 14.838 24.648 25.55 41.917 30.095 17.269 4.545 35.691 2.554 51.724-5.595 16.033-8.149 28.772-21.849 35.889-38.608 7.118-16.759 8.108-35.283 2.784-52.616a82.026 82.026 0 0 0-7.834-17.624 40.147 40.147 0 0 1-14.164 7.746 81.623 81.623 0 0 0 1.747 3.243zm-95.661-39.265a26.264 26.264 0 0 1 9.267-17.519c5.873-4.856 13.455-7.469 21.296-7.35 7.842.119 15.333 2.966 21.049 7.997 5.716 5.031 9.133 11.893 9.614 19.295.089 1.371.116 2.747.081 4.121a67.797 67.797 0 0 1-6.756 33.075c-6.75 12.956-18.529 23.153-32.639 28.112a72.757 72.757 0 0 1-5.702 1.714c-3.287-4.898-7.47-9.117-12.334-12.438-4.865-3.321-10.32-5.674-16.062-6.934a67.914 67.914 0 0 1 12.186-50.073z' fill='%2310A37F'/>
-  </g>
-</svg>`;
+const openaiLogo = "https://cdn.worldvectorlogo.com/logos/openai-2.svg";
 
 // Placeholder people face SVGs TODO: (replace these with actual base64 encoded images or local URLs)
 const peopleFaces = [
@@ -449,13 +444,19 @@ function App() {
         });
 
         // Match detected faces with history based on proximity
-        newImages.forEach((newImage) => {
-          // Find closest match in history (within reasonable distance)
-          let bestMatch = null;
-          let bestDistance = 1000;
-          const MATCH_THRESHOLD = 1000; // pixels
+        const history = detectedFacesHistoryRef.current;
+        const availableHistoryIds = new Set(history.map((face) => face.id));
+        const MATCH_THRESHOLD = 320; // pixels
 
-          detectedFacesHistoryRef.current.forEach((historyFace) => {
+        newImages.forEach((newImage) => {
+          let bestMatch = null;
+          let bestDistance = Infinity;
+
+          history.forEach((historyFace) => {
+            if (!historyFace || !availableHistoryIds.has(historyFace.id)) {
+              return;
+            }
+
             const dx = newImage.centerX - historyFace.centerX;
             const dy = newImage.centerY - historyFace.centerY;
             const distance = Math.sqrt(dx * dx + dy * dy);
@@ -467,20 +468,23 @@ function App() {
           });
 
           if (bestMatch) {
-            // Update existing face
             bestMatch.src = newImage.src;
             bestMatch.centerX = newImage.centerX;
             bestMatch.centerY = newImage.centerY;
             bestMatch.lastSeen = now;
+            availableHistoryIds.delete(bestMatch.id);
           } else {
-            // Add new face to history
-            detectedFacesHistoryRef.current.push({
+            const newHistoryFace = {
               src: newImage.src,
               centerX: newImage.centerX,
               centerY: newImage.centerY,
               lastSeen: now,
-              id: Math.random(), // Unique ID for this face
-            });
+              id:
+                typeof crypto !== "undefined" && crypto.randomUUID
+                  ? crypto.randomUUID()
+                  : `face-${Date.now()}-${Math.random()}`,
+            };
+            history.push(newHistoryFace);
           }
         });
       }
@@ -683,7 +687,12 @@ function App() {
         ref={canvasRef}
         width={window.innerWidth}
         height={window.innerHeight}
-        style={{ position: "absolute", top: 0, left: 0, background: "#000" }}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          background: "rgba(20, 20, 20, 1)",
+        }}
       />
 
       {/* Help popup - only shows when Ctrl/Cmd is held */}
