@@ -725,7 +725,7 @@ function App() {
           position: "absolute",
           top: 0,
           left: 0,
-          background: "rgba(20, 20, 20, 1)",
+          background: "rgba(60, 60, 60, 1)",
         }}
       />
 
