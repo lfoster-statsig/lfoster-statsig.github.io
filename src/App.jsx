@@ -10,12 +10,46 @@ const openaiLogo = "https://cdn.worldvectorlogo.com/logos/openai-2.svg";
 
 // Placeholder people face SVGs TODO: (replace these with actual base64 encoded images or local URLs)
 const peopleFaces = [
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'><circle cx='100' cy='100' r='100' fill='%23FFD700'/><circle cx='75' cy='85' r='12' fill='%23000'/><circle cx='125' cy='85' r='12' fill='%23000'/><ellipse cx='100' cy='130' rx='30' ry='20' fill='%23FF6B6B'/><path d='M70 120 Q100 140 130 120' stroke='%23000' stroke-width='3' fill='none'/></svg>",
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'><circle cx='100' cy='100' r='100' fill='%2387CEEB'/><circle cx='75' cy='85' r='12' fill='%23000'/><circle cx='125' cy='85' r='12' fill='%23000'/><ellipse cx='100' cy='130' rx='30' ry='20' fill='%23FFB6C1'/><path d='M70 120 Q100 140 130 120' stroke='%23000' stroke-width='3' fill='none'/></svg>",
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'><circle cx='100' cy='100' r='100' fill='%2398D8C8'/><circle cx='75' cy='85' r='12' fill='%23000'/><circle cx='125' cy='85' r='12' fill='%23000'/><ellipse cx='100' cy='130' rx='30' ry='20' fill='%23F7B7A3'/><path d='M70 120 Q100 140 130 120' stroke='%23000' stroke-width='3' fill='none'/></svg>",
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'><circle cx='100' cy='100' r='100' fill='%23DDA0DD'/><circle cx='75' cy='85' r='12' fill='%23000'/><circle cx='125' cy='85' r='12' fill='%23000'/><ellipse cx='100' cy='130' rx='30' ry='20' fill='%23FFA07A'/><path d='M70 120 Q100 140 130 120' stroke='%23000' stroke-width='3' fill='none'/></svg>",
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'><circle cx='100' cy='100' r='100' fill='%23FFFFFF'/><circle cx='75' cy='85' r='12' fill='%23000'/><circle cx='125' cy='85' r='12' fill='%23000'/><ellipse cx='100' cy='130' rx='30' ry='20' fill='%23FF6B6B'/><path d='M70 120 Q100 140 130 120' stroke='%23000' stroke-width='3' fill='none'/></svg>",
+  await cropCircularRegion("/assets/Vijaye.webp", 690, 300, 500),
+  await cropCircularRegion("/assets/Jiakan.png", 250, 250, 500),
+  await cropCircularRegion("/assets/Tore.jpeg", 400, 400, 800),
+  await cropCircularRegion("/assets/marcos.png", 250, 250, 500),
 ];
+
+// Helper function to crop a circular region from an image
+async function cropCircularRegion(imageSrc, centerX, centerY, diameter = 200) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = diameter;
+      canvas.height = diameter;
+      const ctx = canvas.getContext("2d");
+
+      // Create circular clipping path
+      ctx.beginPath();
+      ctx.arc(diameter / 2, diameter / 2, diameter / 2, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+
+      // Draw the image centered on the clicked coordinates
+      ctx.drawImage(
+        img,
+        centerX - diameter / 2, // Source X
+        centerY - diameter / 2, // Source Y
+        diameter, // Source width
+        diameter, // Source height
+        0, // Destination X
+        0, // Destination Y
+        diameter, // Destination width
+        diameter // Destination height
+      );
+
+      resolve(canvas.toDataURL());
+    };
+    img.src = imageSrc;
+  });
+}
 
 function App() {
   const videoRef = useRef(null);
@@ -579,7 +613,7 @@ function App() {
             const offsetX = -drawWidth / 2;
             const offsetY =
               placement === "collar"
-                ? size * 0.1 - drawHeight / 2
+                ? size * 0.1 - drawHeight / 5
                 : -size / 2 - drawHeight * 0.65;
 
             ctx.rotate(head.angle * 0.1);
