@@ -8,6 +8,9 @@ const statsigLogo =
 
 const openaiLogo = "https://cdn.worldvectorlogo.com/logos/openai-2.svg";
 
+const OPENAI_KEY_STORAGE_KEY = hashString("openaiApiKey");
+const ENCRYPTION_KEY_SEED = "statsig-face-lab-openai-key";
+
 // Placeholder people face SVGs TODO: (replace these with actual base64 encoded images or local URLs)
 const peopleFaces = [
   await cropCircularRegion("/assets/Vijaye.webp", 690, 300, 500),
@@ -93,11 +96,26 @@ function App() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const storedKey = window.localStorage.getItem("openaiApiKey");
-    if (storedKey) {
-      setApiKey(storedKey);
-      setShouldSaveKey(true);
+    let isMounted = true;
+
+    async function restoreApiKey() {
+      try {
+        const storedValue = window.localStorage.getItem(OPENAI_KEY_STORAGE_KEY);
+        if (!storedValue) return;
+        const decryptedKey = await decryptApiKey(storedValue);
+        if (!decryptedKey || !isMounted) return;
+        setApiKey(decryptedKey);
+        setShouldSaveKey(true);
+      } catch (err) {
+        console.warn("Failed to restore OpenAI API key:", err);
+      }
     }
+
+    restoreApiKey();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -192,7 +210,7 @@ function App() {
 
   const handleResetApiKey = () => {
     if (typeof window !== "undefined") {
-      window.localStorage.removeItem("openaiApiKey");
+      window.localStorage.removeItem(OPENAI_KEY_STORAGE_KEY);
     }
     setApiKey("");
     setApiKeyInput("");
@@ -200,7 +218,7 @@ function App() {
     setModalError("");
   };
 
-  const handleApiKeySubmit = (event) => {
+  const handleApiKeySubmit = async (event) => {
     event.preventDefault();
     const trimmedKey = apiKeyInput.trim();
 
@@ -209,17 +227,30 @@ function App() {
       return;
     }
 
+    let storageError = false;
     if (typeof window !== "undefined") {
-      if (shouldSaveKey) {
-        window.localStorage.setItem("openaiApiKey", trimmedKey);
-      } else {
-        window.localStorage.removeItem("openaiApiKey");
+      try {
+        if (shouldSaveKey) {
+          const encryptedKey = await encryptApiKey(trimmedKey);
+          window.localStorage.setItem(OPENAI_KEY_STORAGE_KEY, encryptedKey);
+        } else {
+          window.localStorage.removeItem(OPENAI_KEY_STORAGE_KEY);
+        }
+      } catch (err) {
+        storageError = true;
+        console.warn("Failed to persist encrypted OpenAI API key:", err);
+        setModalError(
+          "We could not save your key securely. It will only be used for this session."
+        );
+        setShouldSaveKey(false);
       }
     }
 
     setApiKey(trimmedKey);
     setApiKeyInput("");
-    setModalError("");
+    if (!storageError) {
+      setModalError("");
+    }
   };
 
   const handlePromptSubmit = async (event) => {
@@ -1117,6 +1148,155 @@ function spawnHead(src, startX, startY, options = {}) {
     presetType,
     presetIndex,
   };
+}
+
+const TEXT_ENCODER =
+  typeof TextEncoder !== "undefined" ? new TextEncoder() : null;
+const TEXT_DECODER =
+  typeof TextDecoder !== "undefined" ? new TextDecoder() : null;
+let cachedCryptoKeyPromise = null;
+
+async function encryptApiKey(plainText) {
+  if (!plainText) return "";
+  if (
+    typeof window === "undefined" ||
+    !window.crypto?.subtle ||
+    !TEXT_ENCODER
+  ) {
+    return plainText;
+  }
+
+  const cryptoKey = await getCryptoKey();
+  if (!cryptoKey) {
+    return plainText;
+  }
+
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const encoded = TEXT_ENCODER.encode(plainText);
+  const encrypted = await window.crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    cryptoKey,
+    encoded
+  );
+
+  return JSON.stringify({
+    v: 1,
+    iv: bufferToBase64(iv),
+    data: bufferToBase64(new Uint8Array(encrypted)),
+  });
+}
+
+async function decryptApiKey(storedValue) {
+  if (!storedValue) return "";
+  if (
+    typeof window === "undefined" ||
+    !window.crypto?.subtle ||
+    !TEXT_DECODER
+  ) {
+    return storedValue;
+  }
+
+  try {
+    const parsed = JSON.parse(storedValue);
+    if (!parsed?.data || !parsed?.iv) {
+      return storedValue;
+    }
+
+    const cryptoKey = await getCryptoKey();
+    if (!cryptoKey) {
+      return storedValue;
+    }
+
+    const iv = base64ToUint8Array(parsed.iv);
+    const encryptedData = base64ToUint8Array(parsed.data);
+
+    const decrypted = await window.crypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      cryptoKey,
+      encryptedData
+    );
+
+    return TEXT_DECODER.decode(decrypted);
+  } catch (err) {
+    return storedValue;
+  }
+}
+
+async function getCryptoKey() {
+  if (
+    typeof window === "undefined" ||
+    !window.crypto?.subtle ||
+    !TEXT_ENCODER
+  ) {
+    return null;
+  }
+
+  if (!cachedCryptoKeyPromise) {
+    cachedCryptoKeyPromise = (async () => {
+      const hashedSeed = await window.crypto.subtle.digest(
+        "SHA-256",
+        TEXT_ENCODER.encode(ENCRYPTION_KEY_SEED)
+      );
+      return window.crypto.subtle.importKey(
+        "raw",
+        hashedSeed,
+        { name: "AES-GCM" },
+        false,
+        ["encrypt", "decrypt"]
+      );
+    })();
+  }
+
+  return cachedCryptoKeyPromise;
+}
+
+function bufferToBase64(input) {
+  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(bytes).toString("base64");
+  }
+
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i += 1) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+
+  if (typeof window !== "undefined" && typeof window.btoa === "function") {
+    return window.btoa(binary);
+  }
+
+  throw new Error("Base64 encoding not supported in this environment.");
+}
+
+function base64ToUint8Array(base64) {
+  if (!base64) {
+    return new Uint8Array();
+  }
+
+  if (typeof Buffer !== "undefined") {
+    return new Uint8Array(Buffer.from(base64, "base64"));
+  }
+
+  if (typeof window !== "undefined" && typeof window.atob === "function") {
+    const binary = window.atob(base64);
+    const length = binary.length;
+    const bytes = new Uint8Array(length);
+    for (let i = 0; i < length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  throw new Error("Base64 decoding not supported in this environment.");
+}
+
+function hashString(value) {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `h_${(hash >>> 0).toString(16)}`;
 }
 
 export default App;
